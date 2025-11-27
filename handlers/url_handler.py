@@ -32,6 +32,7 @@ PENDING_DOWNLOAD: dict[int, dict] = {}
 
 
 def split_url_and_name(text: str):
+    """Split 'URL | new_name.ext' format."""
     parts = text.split("|", 1)
     url_part = parts[0].strip()
     custom_name = parts[1].strip() if len(parts) > 1 else None
@@ -39,16 +40,18 @@ def split_url_and_name(text: str):
 
 
 def safe_filename(name: str) -> str:
+    """Remove invalid characters from filename."""
     name = "".join(c for c in name if c not in "\\/:*?\"<>|")
     return name or "file"
 
 
 def is_ytdlp_site(url: str) -> bool:
-    # generic: yt-dlp bohot sites handle kar leta hai
+    """Abhi ke liye sab URLs ko yt-dlp ke through try kar rahe hain."""
     return True
 
 
 def build_quality_keyboard(formats):
+    """Formats list se inline keyboard bana do."""
     buttons = []
     for f in formats:
         h = f["height"] or "?"
@@ -182,7 +185,6 @@ def register_url_handlers(app: Client):
 
                     update_stats(downloaded=downloaded_bytes, uploaded=0)
 
-                    # 🔧 Yahan pe pehle bug tha (app variable), ab correct client use ho raha hai
                     await upload_with_thumb_and_progress(
                         client, message, path, user_id, progress_msg
                     )
@@ -223,6 +225,7 @@ def register_url_handlers(app: Client):
                 )
                 return
 
+        # Daily limits
         limit_c = user["daily_count_limit"]
         limit_s = user["daily_size_limit"]
         used_c = user["used_count_today"]
@@ -236,7 +239,9 @@ def register_url_handlers(app: Client):
             )
             return
 
-        wait_msg = await message.reply_text("🔍 Link deep scan ho raha hai (`HEAD` + `yt-dlp`)...")
+        wait_msg = await message.reply_text(
+            "🔍 Link deep scan ho raha hai (`HEAD` + `yt-dlp`)..."
+        )
 
         head_size, head_ctype, head_fname = head_info(url)
 
@@ -478,6 +483,8 @@ def register_url_handlers(app: Client):
         # Name selection step
         if data == "name_default":
             await query.answer("Default file name use hoga.", show_alert=False)
+
+            # YT / streaming case
             if state["type"] == "yt":
                 formats = state["formats"]
                 await msg.edit_text(
@@ -489,6 +496,7 @@ def register_url_handlers(app: Client):
                 state["mode"] = "await_quality"
                 return
 
+            # Direct file case
             if state["type"] == "direct":
                 if head_size > 0 and head_size > MAX_FILE_SIZE:
                     await msg.edit_text(
@@ -548,9 +556,6 @@ def register_url_handlers(app: Client):
             )
             return
 
-        # Direct download fallback button
+        # Direct download fallback button (yt-dlp se dikkat ho to)
         if data == "direct_dl":
-            await query.answer("Direct download try ho raha hai...", show_alert=False)
-            progress_msg = await msg.edit_text("⬇️ Direct download try ho raha hai...")
-            try:
-                
+     
