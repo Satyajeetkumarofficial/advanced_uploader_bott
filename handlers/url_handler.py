@@ -106,7 +106,7 @@ def register_url_handlers(app: Client):
             ]
         )
     )
-    async def handle_url(_, message: Message):
+    async def handle_url(client: Client, message: Message):
         chat_id = message.chat.id
         user_id = message.from_user.id
 
@@ -138,6 +138,7 @@ def register_url_handlers(app: Client):
             state["custom_name"] = new_name
             state["filename"] = new_name
 
+            # YT / streaming case – ab quality select karni hai
             if state["type"] == "yt":
                 formats = state["formats"]
                 text = (
@@ -151,6 +152,7 @@ def register_url_handlers(app: Client):
                 state["mode"] = "await_quality"
                 return
 
+            # Direct URL case – rename ke baad direct download
             if state["type"] == "direct":
                 url = state["url"]
                 filename = state["filename"]
@@ -158,7 +160,8 @@ def register_url_handlers(app: Client):
 
                 if head_size > 0 and head_size > MAX_FILE_SIZE:
                     await message.reply_text(
-                        f"⛔ File Telegram limit se badi hai.\nSize: {human_readable(head_size)}"
+                        f"⛔ File Telegram limit se badi hai.\n"
+                        f"Size: {human_readable(head_size)}"
                     )
                     del PENDING_DOWNLOAD[chat_id]
                     return
@@ -178,8 +181,10 @@ def register_url_handlers(app: Client):
                         return
 
                     update_stats(downloaded=downloaded_bytes, uploaded=0)
+
+                    # 🔧 Yahan pe pehle bug tha (app variable), ab correct client use ho raha hai
                     await upload_with_thumb_and_progress(
-                        app, message, path, user_id, progress_msg
+                        client, message, path, user_id, progress_msg
                     )
                 except Exception as e:
                     await message.reply_text(f"❌ Error: `{e}`")
@@ -194,7 +199,7 @@ def register_url_handlers(app: Client):
         url_candidate, custom_name = split_url_and_name(text)
         match = re.search(URL_REGEX, url_candidate)
         if not match:
-            # URL nahi hai → bot silent
+            # URL nahi hai → bot silent (koi reply nahi)
             return
 
         url = match.group(0)
@@ -253,13 +258,13 @@ def register_url_handlers(app: Client):
                 )
                 return
 
-        # yt-dlp try
+        # yt-dlp try (YouTube / streaming / reel etc.)
         try:
             formats, info = get_formats(url) if is_ytdlp_site(url) else ([], None)
         except Exception:
             formats, info = [], None
 
-        # yt-dlp case
+        # yt-dlp case (quality selection)
         if formats:
             title = info.get("title", head_fname or "video")
 
@@ -312,7 +317,7 @@ def register_url_handlers(app: Client):
             )
             return
 
-        # direct file case
+        # Direct file case (yt-dlp formats nahi mile)
         await wait_msg.edit_text("🌐 Direct file download mode...")
 
         filename = head_fname or url.split("/")[-1] or "file"
@@ -543,17 +548,9 @@ def register_url_handlers(app: Client):
             )
             return
 
-        # Direct download fallback
+        # Direct download fallback button
         if data == "direct_dl":
             await query.answer("Direct download try ho raha hai...", show_alert=False)
             progress_msg = await msg.edit_text("⬇️ Direct download try ho raha hai...")
             try:
-                path, downloaded_bytes = await download_direct_with_progress(
-                    url, filename, progress_msg
-                )
-            except Exception as e:
-                await msg.edit_text(f"❌ Direct download fail: `{e}`")
-                if os.path.exists(filename):
-                    os.remove(filename)
-                del PENDING_DOWNLOAD[chat_id]
-           
+                
