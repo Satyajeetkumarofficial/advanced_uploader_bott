@@ -14,7 +14,7 @@ PREMIUM_DAILY_COUNT_LIMIT = int(os.getenv("PREMIUM_DAILY_COUNT_LIMIT", "100"))
 PREMIUM_DAILY_SIZE_LIMIT_MB = int(os.getenv("PREMIUM_DAILY_SIZE_LIMIT_MB", "10000"))
 
 # ⏳ Normal users cooldown seconds (0 = disable)
-NORMAL_COOLDOWN_SECONDS = int(os.getenv("NORMAL_COOLDOWN_SECONDS", "120"))  # 2 minutes
+NORMAL_COOLDOWN_SECONDS = int(os.getenv("NORMAL_COOLDOWN_SECONDS", "20"))  # 2 minutes
 
 # 📊 Progress update interval (seconds)
 PROGRESS_UPDATE_INTERVAL = int(os.getenv("PROGRESS_UPDATE_INTERVAL", "5"))  # e.g. 5 or 10
